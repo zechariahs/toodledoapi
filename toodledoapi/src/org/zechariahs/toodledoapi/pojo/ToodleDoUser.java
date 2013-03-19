@@ -7,9 +7,19 @@ public class ToodleDoUser extends ToodleDoBase
      private String password = "";
      private String token = "";
      private String key = "";
+     private long tokenExpiration;
      
-     
-     public ToodleDoUser()
+     public long getTokenExpiration() 
+     {
+		return tokenExpiration;
+	}
+
+	public void setTokenExpiration(long tokenExpiration) 
+	{
+		this.tokenExpiration = tokenExpiration;
+	}
+
+	public ToodleDoUser()
      {
      }
 

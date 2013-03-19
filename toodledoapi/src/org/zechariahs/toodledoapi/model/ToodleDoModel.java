@@ -2,6 +2,7 @@ package org.zechariahs.toodledoapi.model;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 
 import java.io.BufferedReader;
@@ -23,78 +24,495 @@ import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
 
+import org.hamcrest.core.IsAnything;
 import org.zechariahs.toodledoapi.Utility;
 import org.zechariahs.toodledoapi.gson.ToodleDoContextDeserializer;
 import org.zechariahs.toodledoapi.gson.ToodleDoFolderDeserializer;
+import org.zechariahs.toodledoapi.gson.ToodleDoResponseDeserializer;
 import org.zechariahs.toodledoapi.gson.ToodleDoTaskDeserializer;
 import org.zechariahs.toodledoapi.pojo.ToodleDoContext;
 import org.zechariahs.toodledoapi.pojo.ToodleDoFolder;
+import org.zechariahs.toodledoapi.pojo.ToodleDoResponse;
 import org.zechariahs.toodledoapi.pojo.ToodleDoTask;
 import org.zechariahs.toodledoapi.pojo.ToodleDoUser;
 
 public class ToodleDoModel
 {
 
-     protected final String TOKEN = "api4f3137c6167e8";
-     protected final String APPID = "SeapineSync";
-     
-     protected String m_sUserId = "td4d5294b296004";
+     protected final static String TOKEN = "api51340d2d1e980";
+     protected final static String APPID = "JToodledo";
      
      protected ToodleDoUser m_oToodleDoUser = new ToodleDoUser();
      
-     public ToodleDoModel(String a_sUsername, String a_sPassword)
+     public static ToodleDoFolder addFolder(ToodleDoUser a_oUser, ToodleDoFolder a_oFolder)
      {
-          ToodleDoUser oTDUser = new ToodleDoUser(a_sUsername, a_sPassword);
-          setToodleDoUser(oTDUser);
-          authenticateUser();
+    	 String sURL = "http://api.toodledo.com/2/folders/add.php?";
+         
+    	 ToodleDoFolder newFolder = new ToodleDoFolder();
+    	 
+         Gson gson = new Gson();
+         
+         Hashtable<String, String> htParameters = new Hashtable<String, String>();     
+         
+         htParameters.put("key", a_oUser.getKey());
+         htParameters.put("name", a_oFolder.getName());
+         
+         StringBuffer sbResp = makeRequest(sURL, htParameters);
+         System.out.println(sbResp.toString());
+         
+         gson = new GsonBuilder()
+              .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
+              .create();
+              
+         try
+         {
+        	 Type collectionType = new TypeToken<List<ToodleDoFolder>>(){}.getType();
+        	 List<ToodleDoFolder> lstFolders = (List<ToodleDoFolder>)gson.fromJson(sbResp.toString(), collectionType);
+        	 newFolder = lstFolders.get(0);
+         }
+         catch(JsonSyntaxException e)
+         {
+        	 // Probably caused by an error so only one object is returned instead of an array.
+        	 newFolder = gson.fromJson(sbResp.toString(), org.zechariahs.toodledoapi.pojo.ToodleDoFolder.class);
+         }
+         
+         return newFolder;
      }
      
-     public ToodleDoModel(ToodleDoUser a_oTDUser)
+     public static ToodleDoFolder deleteFolder(ToodleDoUser a_oUser, ToodleDoFolder a_oFolder)
      {
-          setToodleDoUser(a_oTDUser);
-          authenticateUser();
+    	 String sURL = "http://api.toodledo.com/2/folders/delete.php?";
+         
+    	 ToodleDoFolder deletedFolder = new ToodleDoFolder();
+    	 
+         Gson gson = new Gson();
+         
+         Hashtable htParameters = new Hashtable();     
+         
+         htParameters.put("key", a_oUser.getKey());
+         htParameters.put("id", "" + a_oFolder.getId());
+         
+         StringBuffer sbResp = makeRequest(sURL, htParameters);
+         System.out.println(sbResp.toString());
+         
+         gson = new GsonBuilder()
+              .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
+              .create();
+              
+         try
+         {
+        	 Type collectionType = new TypeToken<List<ToodleDoFolder>>(){}.getType();
+        	 List<ToodleDoFolder> lstFolders = (List<ToodleDoFolder>)gson.fromJson(sbResp.toString(), collectionType);
+        	 deletedFolder = lstFolders.get(0);
+         }
+         catch(JsonSyntaxException e)
+         {
+        	 // Probably caused by an error so only one object is returned instead of an array.
+        	 deletedFolder = gson.fromJson(sbResp.toString(), org.zechariahs.toodledoapi.pojo.ToodleDoFolder.class);
+         }
+         
+         return deletedFolder;
      }
      
-     protected void authenticateUser()
+     /**
+      * Uses the ToodleDo API to update the given folder.  The API only provides
+      * the ability to update a folder's name, private flag or archived flag.
+      * 
+      * @param a_oUser
+      * @param a_oFolder
+      * @return the updated folder.
+      */
+     public static ToodleDoFolder editFolder(ToodleDoUser a_oUser, ToodleDoFolder a_oFolder)
      {
-          setToodleDoUser(authenticateUser(getToodleDoUser()));
+    	 System.out.println("Editing folder...");
+    	 
+    	 String sURL = "http://api.toodledo.com/2/folders/edit.php?";
+         
+    	 ToodleDoFolder editedFolder = new ToodleDoFolder();
+    	 
+         Gson gson = new Gson();
+         
+         Hashtable<String, String> htParameters = new Hashtable<String, String>();     
+         
+         htParameters.put("key", a_oUser.getKey());
+         htParameters.put("id", "" + a_oFolder.getId());
+         
+         if(a_oFolder.isNameDirty())
+         {
+        	 htParameters.put("name", a_oFolder.getName());
+         }
+         
+         if(a_oFolder.isPrivateFolderDirty())
+         {
+        	 htParameters.put("private", "" + a_oFolder.getPrivateFolder());
+         }
+         
+         if(a_oFolder.isArchiveDirty())
+         {
+        	 htParameters.put("archived", "" + a_oFolder.getArchive());
+         }
+         
+         StringBuffer sbResp = makeRequest(sURL, htParameters);
+         //System.out.println(sbResp.toString());
+         
+         gson = new GsonBuilder()
+              .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
+              .create();
+              
+         try
+         {
+        	 Type collectionType = new TypeToken<List<ToodleDoFolder>>(){}.getType();
+        	 List<ToodleDoFolder> lstFolders = (List<ToodleDoFolder>)gson.fromJson(sbResp.toString(), collectionType);
+        	 editedFolder = lstFolders.get(0);
+         }
+         catch(JsonSyntaxException e)
+         {
+        	 // Probably caused by an error so only one object is returned instead of an array.
+        	 editedFolder = gson.fromJson(sbResp.toString(), org.zechariahs.toodledoapi.pojo.ToodleDoFolder.class);
+         }
+         
+         return editedFolder;
      }
      
-     public ToodleDoUser authenticateUser(String a_sUsername, String a_sPassword)
-     {
-          ToodleDoUser oTDUser = new ToodleDoUser(a_sUsername, a_sPassword);
-          return authenticateUser(oTDUser);
-     }
      
-     public ToodleDoUser authenticateUser(ToodleDoUser a_oTDUser)
+     public static ToodleDoTask addTask(ToodleDoUser a_oUser, ToodleDoTask a_oTask)
      {
-          String sPassword = a_oTDUser.getPassword();
+          String sURL = "http://api.toodledo.com/2/tasks/add.php?";
           
-          if(a_oTDUser.getUserid() == null || a_oTDUser.getUserid().length() == 0)
+          Gson gson = new Gson();
+          String sJSON = gson.toJson(a_oTask);
+          
+          System.out.println("JSON: " + sJSON);
+          
+          Hashtable htParameters = new Hashtable();     
+          
+          htParameters.put("key", a_oUser.getKey());
+          htParameters.put("tasks", sJSON);
+          
+          StringBuffer sbResp = makeRequest(sURL, htParameters);
+          System.out.println(sbResp.toString());
+          
+          gson = new GsonBuilder()
+               .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
+               .create();
+               
+          Type collectionType = new TypeToken<List<ToodleDoTask>>(){}.getType();
+          List<ToodleDoTask> lstTasks = (List<ToodleDoTask>)gson.fromJson(sbResp.toString(), collectionType);
+          
+          return lstTasks.get(0);
+          
+     }
+     
+     public static List<ToodleDoResponse> deleteTasks(ToodleDoUser a_oUser, List<ToodleDoTask> a_lstTasks)
+     {
+    	 
+    	 String sURL = "http://api.toodledo.com/2/tasks/delete.php?";
+         
+    	 int[] arrTaskId = new int[a_lstTasks.size()];
+    	 
+    	 for(int x = 0; x < a_lstTasks.size(); x++)
+    	 {
+    		 arrTaskId[x] = Integer.parseInt(a_lstTasks.get(x).getId());
+    	 }
+    	 
+         Gson gson = new Gson();
+         String sJSON = gson.toJson(arrTaskId);
+         
+         System.out.println("JSON: " + sJSON);
+         
+         Hashtable htParameters = new Hashtable();     
+         
+         htParameters.put("key", a_oUser.getKey());
+         htParameters.put("tasks", sJSON);
+         
+         StringBuffer sbResp = makeRequest(sURL, htParameters);
+         System.out.println(sbResp.toString());     
+         
+         gson = new GsonBuilder()
+              .registerTypeAdapter(ToodleDoResponse.class, new ToodleDoResponseDeserializer())
+              .create();
+              
+         Type collectionType = new TypeToken<List<ToodleDoResponse>>(){}.getType();
+         List<ToodleDoResponse> lstResponses = (List<ToodleDoResponse>)gson.fromJson(sbResp.toString(), collectionType);
+         
+         return lstResponses;
+    	 
+     }
+     
+     public static List<ToodleDoTask> addTasks(ToodleDoUser a_oUser, List<ToodleDoTask> a_lstTasks)
+     {
+          String sURL = "http://api.toodledo.com/2/tasks/add.php?";
+          
+          List<ToodleDoTask> lstToReturn = new ArrayList<ToodleDoTask>();
+          
+          int iEnd = 0;
+          
+          System.out.println("Adding " + a_lstTasks.size() + " tasks.");
+          
+          if(a_lstTasks != null && a_lstTasks.size() > 49)
           {
-               a_oTDUser = accountLookup(a_oTDUser);
+               for(int iBegin = 0; iBegin < a_lstTasks.size(); iBegin += 49)
+               {
+                    
+                    iEnd = iBegin + 49;
+                    
+                    if(iEnd > a_lstTasks.size())
+                    {
+                         iEnd = a_lstTasks.size() - 1;
+                    }
+                    
+                    System.out.println("Adding tasks " + iBegin + " through " + iEnd);
+                    
+                    List<ToodleDoTask> lstSplit = a_lstTasks.subList(iBegin, iEnd);
+                    
+                    Gson gson = new Gson();
+                    String sJSON = gson.toJson(lstSplit);
+                    
+                    System.out.println("JSON: " + sJSON);
+                    
+                    Hashtable htParameters = new Hashtable();     
+                    
+                    htParameters.put("key", a_oUser.getKey());
+                    htParameters.put("tasks", sJSON);
+                    
+                    StringBuffer sbResp = makeRequest(sURL, htParameters);
+                    System.out.println(sbResp.toString());
+                    
+                    gson = new GsonBuilder()
+                         .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
+                         .create();
+                         
+                    Type collectionType = new TypeToken<List<ToodleDoTask>>(){}.getType();
+                    
+                    try
+                    {
+                         lstToReturn.addAll((List<ToodleDoTask>)gson.fromJson(sbResp.toString(), collectionType));
+                    }
+                    catch(NullPointerException npe)
+                    {
+                         
+                    }
+                    
+               }
+          }
+          else
+          {
+          
+               if(a_lstTasks != null && a_lstTasks.size() > 0)
+               {
+                    Gson gson = new Gson();
+                    String sJSON = gson.toJson(a_lstTasks);
+                    
+                    System.out.println("JSON: " + sJSON);
+                    
+                    Hashtable htParameters = new Hashtable();     
+                    
+                    htParameters.put("key", a_oUser.getKey());
+                    htParameters.put("tasks", sJSON);
+                    
+                    StringBuffer sbResp = makeRequest(sURL, htParameters);
+                    System.out.println(sbResp.toString());
+                    
+                    gson = new GsonBuilder()
+                         .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
+                         .create();
+                         
+                    Type collectionType = new TypeToken<List<ToodleDoTask>>(){}.getType();
+                    
+                    lstToReturn = (List<ToodleDoTask>)gson.fromJson(sbResp.toString(), collectionType);
+               }
           }
           
-          System.out.println("userid = " + a_oTDUser.getUserid());     
+          return lstToReturn;
           
-          if(a_oTDUser.getToken() == null || a_oTDUser.getToken().length() == 0)
-          {
-               a_oTDUser = getToken(a_oTDUser);
-          }
-          
-          System.out.println("token = " + a_oTDUser.getToken());
-          
-          // Setting this again for safety since something seems to be wiping it out.
-          a_oTDUser.setPassword(sPassword);
-          
-          String sKey = Utility.createMD5Hash(a_oTDUser.getPassword()) + TOKEN + a_oTDUser.getToken();
-          sKey = Utility.createMD5Hash(sKey);
-          a_oTDUser.setKey(sKey);
-          
-          return a_oTDUser;
      }
      
-     public StringBuffer makeRequest(String a_sURL, Hashtable a_htParameters)
+     public static ToodleDoTask editTask(ToodleDoUser a_oUser, ToodleDoTask a_oTask)
+     {
+          String sURL = "http://api.toodledo.com/2/tasks/edit.php?";
+          
+          Gson gson = new Gson();
+          String sJSON = gson.toJson(a_oTask);
+          
+          System.out.println("JSON: " + sJSON);
+          
+          Hashtable htParameters = new Hashtable();     
+          
+          htParameters.put("key", a_oUser.getKey());
+          htParameters.put("tasks", sJSON);
+          
+          StringBuffer sbResp = makeRequest(sURL, htParameters);
+          System.out.println(sbResp.toString());     
+          
+          gson = new GsonBuilder()
+               .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
+               .create();
+               
+          Type collectionType = new TypeToken<List<ToodleDoTask>>(){}.getType();
+          List<ToodleDoTask> lstTasks = (List<ToodleDoTask>)gson.fromJson(sbResp.toString(), collectionType);
+          
+          return lstTasks.get(0);
+          
+     }
+     
+     public static List<ToodleDoTask> getAllTasks(ToodleDoUser a_oUser)
+     {
+          String sURL = "http://api.toodledo.com/2/tasks/get.php";
+          
+          Hashtable htParameters = new Hashtable();
+          
+          htParameters.put("key", a_oUser.getKey());
+          htParameters.put("fields", "folder,context,duedate,priority");
+          
+          StringBuffer sbResp = makeRequest(sURL, htParameters);
+          
+          Gson gson = new GsonBuilder()
+               .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
+               .create();
+               
+          Type collectionType = new TypeToken<List<ToodleDoTask>>(){}.getType();
+          List<ToodleDoTask> lstTasks = (List<ToodleDoTask>)gson.fromJson(sbResp.toString(), collectionType);
+          
+          System.out.println("Total Tasks:" + lstTasks.size());
+
+          return lstTasks;
+
+     }
+     
+     public static List<ToodleDoContext> getContexts(ToodleDoUser a_oUser)
+     {
+          String sURL = "http://api.toodledo.com/2/contexts/get.php?";
+          
+          Hashtable htParameters = new Hashtable();
+          
+          htParameters.put("key", a_oUser.getKey());
+          
+          StringBuffer sbResp = makeRequest(sURL, htParameters);
+          
+          Gson gson = new GsonBuilder()
+               .registerTypeAdapter(ToodleDoFolder.class, new ToodleDoContextDeserializer())
+               .create();
+               
+          Type collectionType = new TypeToken<List<ToodleDoContext>>(){}.getType();
+          List<ToodleDoContext> lstContexts = (List<ToodleDoContext>)gson.fromJson(sbResp.toString(), collectionType);
+          
+          System.out.println("Total Contexts:" + lstContexts.size());
+
+          return lstContexts;
+
+     }
+     
+     public static List<ToodleDoFolder> getFolders(ToodleDoUser a_oUser)
+     {
+          String sURL = "http://api.toodledo.com/2/folders/get.php?";
+          
+          Hashtable htParameters = new Hashtable();
+          
+          htParameters.put("key", a_oUser.getKey());
+          
+          StringBuffer sbResp = makeRequest(sURL, htParameters);
+          
+          Gson gson = new GsonBuilder()
+               .registerTypeAdapter(ToodleDoFolder.class, new ToodleDoFolderDeserializer())
+               .create();
+               
+          Type collectionType = new TypeToken<List<ToodleDoFolder>>(){}.getType();
+          List<ToodleDoFolder> lstFolders = (List<ToodleDoFolder>)gson.fromJson(sbResp.toString(), collectionType);
+          
+          System.out.println("Total Folders:" + lstFolders.size());
+
+          return lstFolders;
+
+     }
+     
+     /**
+      * Used to initialize a user's session.  As of 2013-03-03, a session is good for 4 hours.
+      * 
+      * @param a_oUser
+      * @return
+      */
+     public static ToodleDoUser getToken(ToodleDoUser a_oUser)
+     {
+    	 System.out.println("Looking up token...");
+         
+          
+    	 
+    	 
+    	 String sURL = "http://api.toodledo.com/2/account/token.php?";
+          
+          Hashtable htParameters = new Hashtable();
+          
+          htParameters.put("userid", a_oUser.getUserid());
+          htParameters.put("appid", APPID);
+          htParameters.put("sig", Utility.createMD5Hash(a_oUser.getUserid() + TOKEN));   
+          
+          StringBuffer sbResp = makeRequest(sURL, htParameters);
+          
+          Gson gson = new Gson();
+          a_oUser = gson.fromJson(sbResp.toString(), org.zechariahs.toodledoapi.pojo.ToodleDoUser.class);
+          
+          if(a_oUser.getToken() != null && a_oUser.getToken().length() > 0)
+          {
+        	  
+        	  System.out.println("Token:" + a_oUser.getToken());
+        	  
+        	  // Set token to expire in 4 hours. (4 hours = 1000 milliseconds * 60 seconds * 60 minutes * 4 hours)
+        	  a_oUser.setTokenExpiration(System.currentTimeMillis() + 1000 * 60 * 60 * 4);
+        	  
+        	  a_oUser = populateKey(a_oUser);
+        	  
+          }
+          
+          return a_oUser;
+          
+     }
+     
+     /**
+      * Retrieves a user's UserId and stores it in the ToodleDoUser object
+      * returned by this function.  Note - The user's UserId never changes
+      * so it should be stored in perpetuity.
+      * 
+      * @param a_oUser
+      * @return
+      */
+     public static ToodleDoUser accountLookup(String a_sEmail, String a_sPassword)
+     {
+          System.out.println("Looking up account...");
+          
+          String sURL = "http://api.toodledo.com/2/account/lookup.php?";
+          
+          Hashtable htParameters = new Hashtable();
+          
+          htParameters.put("appid", APPID);
+          htParameters.put("email", a_sEmail);
+          htParameters.put("pass", a_sPassword);
+          htParameters.put("sig", Utility.createMD5Hash(a_sEmail + TOKEN));
+          
+          StringBuffer sbResp = makeRequest(sURL, htParameters);
+          
+          Gson gson = new Gson();
+          ToodleDoUser a_oUser = gson.fromJson(sbResp.toString(), org.zechariahs.toodledoapi.pojo.ToodleDoUser.class);
+          
+          return a_oUser;
+          
+     }
+     
+     public static ToodleDoUser populateKey(ToodleDoUser a_oUser)
+     {
+    	 
+    	 System.out.println(a_oUser.getPassword() + " - " + TOKEN + " - " + a_oUser.getToken());
+    	 
+    	 String sKey = Utility.createMD5Hash(a_oUser.getPassword()) + TOKEN + a_oUser.getToken();
+         sKey = Utility.createMD5Hash(sKey);
+         
+         System.out.println(sKey);
+         
+         a_oUser.setKey(sKey);
+         
+         return a_oUser;
+     }
+     
+     public static StringBuffer makeRequest(String a_sURL, Hashtable<?, ?> a_htParameters)
      {
           
           String sURL = a_sURL;
@@ -170,284 +588,10 @@ public class ToodleDoModel
                 System.out.println(e.getLocalizedMessage());
           }    
           
+          System.out.println("\n");
+          
           return sbResp;
           
      }
      
-     public ToodleDoTask addTask(ToodleDoTask a_oTask)
-     {
-          String sURL = "http://api.toodledo.com/2/tasks/add.php?";
-          
-          Gson gson = new Gson();
-          String sJSON = gson.toJson(a_oTask);
-          
-          System.out.println("JSON: " + sJSON);
-          
-          Hashtable htParameters = new Hashtable();     
-          
-          htParameters.put("key", getToodleDoUser().getKey());
-          htParameters.put("tasks", sJSON);
-          
-          StringBuffer sbResp = makeRequest(sURL, htParameters);
-          System.out.println(sbResp.toString());
-          
-          gson = new GsonBuilder()
-               .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
-               .create();
-               
-          Type collectionType = new TypeToken<List<ToodleDoTask>>(){}.getType();
-          List<ToodleDoTask> lstTasks = (List<ToodleDoTask>)gson.fromJson(sbResp.toString(), collectionType);
-          
-          return lstTasks.get(0);
-          
-     }
-     
-     public List<ToodleDoTask> addTasks(List<ToodleDoTask> a_lstTasks)
-     {
-          String sURL = "http://api.toodledo.com/2/tasks/add.php?";
-          
-          List<ToodleDoTask> lstToReturn = new ArrayList<ToodleDoTask>();
-          
-          int iEnd = 0;
-          
-          System.out.println("Adding " + a_lstTasks.size() + " tasks.");
-          
-          if(a_lstTasks != null && a_lstTasks.size() > 49)
-          {
-               for(int iBegin = 0; iBegin < a_lstTasks.size(); iBegin += 49)
-               {
-                    
-                    iEnd = iBegin + 49;
-                    
-                    if(iEnd > a_lstTasks.size())
-                    {
-                         iEnd = a_lstTasks.size() - 1;
-                    }
-                    
-                    System.out.println("Adding tasks " + iBegin + " through " + iEnd);
-                    
-                    List<ToodleDoTask> lstSplit = a_lstTasks.subList(iBegin, iEnd);
-                    
-                    Gson gson = new Gson();
-                    String sJSON = gson.toJson(lstSplit);
-                    
-                    System.out.println("JSON: " + sJSON);
-                    
-                    Hashtable htParameters = new Hashtable();     
-                    
-                    htParameters.put("key", getToodleDoUser().getKey());
-                    htParameters.put("tasks", sJSON);
-                    
-                    StringBuffer sbResp = makeRequest(sURL, htParameters);
-                    System.out.println(sbResp.toString());
-                    
-                    gson = new GsonBuilder()
-                         .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
-                         .create();
-                         
-                    Type collectionType = new TypeToken<List<ToodleDoTask>>(){}.getType();
-                    
-                    try
-                    {
-                         lstToReturn.addAll((List<ToodleDoTask>)gson.fromJson(sbResp.toString(), collectionType));
-                    }
-                    catch(NullPointerException npe)
-                    {
-                         
-                    }
-                    
-               }
-          }
-          else
-          {
-          
-               if(a_lstTasks != null && a_lstTasks.size() > 0)
-               {
-                    Gson gson = new Gson();
-                    String sJSON = gson.toJson(a_lstTasks);
-                    
-                    System.out.println("JSON: " + sJSON);
-                    
-                    Hashtable htParameters = new Hashtable();     
-                    
-                    htParameters.put("key", getToodleDoUser().getKey());
-                    htParameters.put("tasks", sJSON);
-                    
-                    StringBuffer sbResp = makeRequest(sURL, htParameters);
-                    System.out.println(sbResp.toString());
-                    
-                    gson = new GsonBuilder()
-                         .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
-                         .create();
-                         
-                    Type collectionType = new TypeToken<List<ToodleDoTask>>(){}.getType();
-                    
-                    lstToReturn = (List<ToodleDoTask>)gson.fromJson(sbResp.toString(), collectionType);
-               }
-          }
-          
-          return lstToReturn;
-          
-     }
-     
-     public ToodleDoTask updateTask(ToodleDoTask a_oTask)
-     {
-          String sURL = "http://api.toodledo.com/2/tasks/edit.php?";
-          
-          Gson gson = new Gson();
-          String sJSON = gson.toJson(a_oTask);
-          
-          
-          
-          System.out.println("JSON: " + sJSON);
-          
-          Hashtable htParameters = new Hashtable();     
-          
-          htParameters.put("key", getToodleDoUser().getKey());
-          htParameters.put("tasks", sJSON);
-          
-          StringBuffer sbResp = makeRequest(sURL, htParameters);
-          System.out.println(sbResp.toString());     
-          
-          gson = new GsonBuilder()
-               .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
-               .create();
-               
-          Type collectionType = new TypeToken<List<ToodleDoTask>>(){}.getType();
-          List<ToodleDoTask> lstTasks = (List<ToodleDoTask>)gson.fromJson(sbResp.toString(), collectionType);
-          
-          return lstTasks.get(0);
-          
-     }
-     
-     public List<ToodleDoTask> getAllTasks()
-     {
-          String sURL = "http://api.toodledo.com/2/tasks/get.php";
-          
-          Hashtable htParameters = new Hashtable();
-          
-          htParameters.put("key", getToodleDoUser().getKey());
-          htParameters.put("fields", "folder,context,duedate,priority");
-          
-          StringBuffer sbResp = makeRequest(sURL, htParameters);
-          
-          Gson gson = new GsonBuilder()
-               .registerTypeAdapter(ToodleDoTask.class, new ToodleDoTaskDeserializer())
-               .create();
-               
-          Type collectionType = new TypeToken<List<ToodleDoTask>>(){}.getType();
-          List<ToodleDoTask> lstTasks = (List<ToodleDoTask>)gson.fromJson(sbResp.toString(), collectionType);
-          
-          System.out.println("Total Tasks:" + lstTasks.size());
-
-          return lstTasks;
-
-     }
-     
-     public List<ToodleDoContext> getContexts()
-     {
-          String sURL = "http://api.toodledo.com/2/contexts/get.php?";
-          
-          Hashtable htParameters = new Hashtable();
-          
-          htParameters.put("key", getToodleDoUser().getKey());
-          
-          StringBuffer sbResp = makeRequest(sURL, htParameters);
-          
-          Gson gson = new GsonBuilder()
-               .registerTypeAdapter(ToodleDoFolder.class, new ToodleDoContextDeserializer())
-               .create();
-               
-          Type collectionType = new TypeToken<List<ToodleDoContext>>(){}.getType();
-          List<ToodleDoContext> lstContexts = (List<ToodleDoContext>)gson.fromJson(sbResp.toString(), collectionType);
-          
-          System.out.println("Total Contexts:" + lstContexts.size());
-
-          return lstContexts;
-
-     }
-     
-     public List<ToodleDoFolder> getFolders()
-     {
-          String sURL = "http://api.toodledo.com/2/folders/get.php?";
-          
-          Hashtable htParameters = new Hashtable();
-          
-          htParameters.put("key", getToodleDoUser().getKey());
-          
-          StringBuffer sbResp = makeRequest(sURL, htParameters);
-          
-          Gson gson = new GsonBuilder()
-               .registerTypeAdapter(ToodleDoFolder.class, new ToodleDoFolderDeserializer())
-               .create();
-               
-          Type collectionType = new TypeToken<List<ToodleDoFolder>>(){}.getType();
-          List<ToodleDoFolder> lstFolders = (List<ToodleDoFolder>)gson.fromJson(sbResp.toString(), collectionType);
-          
-          System.out.println("Total Folders:" + lstFolders.size());
-
-          return lstFolders;
-
-     }
-     
-     public ToodleDoUser getToken(ToodleDoUser a_oUser)
-     {
-          String sURL = "http://api.toodledo.com/2/account/token.php?";
-          
-          Hashtable htParameters = new Hashtable();
-          
-          htParameters.put("userid", a_oUser.getUserid());
-          htParameters.put("appid", APPID);
-          htParameters.put("sig", Utility.createMD5Hash(a_oUser.getUserid() + TOKEN));   
-          
-          StringBuffer sbResp = makeRequest(sURL, htParameters);
-          
-          Gson gson = new Gson();
-          a_oUser = gson.fromJson(sbResp.toString(), org.zechariahs.toodledoapi.pojo.ToodleDoUser.class);
-          
-          return a_oUser;
-          
-     }
-     
-     public ToodleDoUser accountLookup(ToodleDoUser a_oUser)
-     {
-          System.out.println("Looking up account...");
-          
-          String sURL = "http://api.toodledo.com/2/account/lookup.php?";
-          
-          Hashtable htParameters = new Hashtable();
-          
-          htParameters.put("appid", APPID);
-          htParameters.put("email", a_oUser.getEmail());
-          htParameters.put("pass", a_oUser.getPassword());
-          htParameters.put("sig", Utility.createMD5Hash(a_oUser.getEmail() + TOKEN));
-          
-          StringBuffer sbResp = makeRequest(sURL, htParameters);
-          
-          Gson gson = new Gson();
-          a_oUser = gson.fromJson(sbResp.toString(), org.zechariahs.toodledoapi.pojo.ToodleDoUser.class);
-          
-          return a_oUser;
-          
-     }
-
-     public void setUserId(String userId)
-     {
-          this.m_sUserId = userId;
-     }
-
-     public String getUserId()
-     {
-          return m_sUserId;
-     }
-
-     public void setToodleDoUser(ToodleDoUser toodleDoUser)
-     {
-          this.m_oToodleDoUser = toodleDoUser;
-     }
-
-     public ToodleDoUser getToodleDoUser()
-     {
-          return m_oToodleDoUser;
-     }
 }

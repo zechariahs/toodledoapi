@@ -4,6 +4,7 @@ public class ToodleDoBase
 {
      String errorCode = "";
      String errorDesc = "";
+     String deleted = "";
      
      boolean hasError = false;
 
@@ -33,4 +34,12 @@ public class ToodleDoBase
      {
           return errorDesc;
      }
+
+	public String getDeleted() {
+		return deleted;
+	}
+
+	public void setDeleted(String deleted) {
+		this.deleted = deleted;
+	}
 }

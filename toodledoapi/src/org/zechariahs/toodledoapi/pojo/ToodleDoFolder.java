@@ -1,5 +1,16 @@
 package org.zechariahs.toodledoapi.pojo;
 
+/**
+ * Represents a Folder in ToodleDo.
+ * 
+ * When changing the name, private flag or archive flag be sure
+ * to use the related set method.  Not doing so will prevent
+ * the editFolder method from correctly invoking the
+ * ToodleDo API.
+ * 
+ * @author zechariahs
+ *
+ */
 public class ToodleDoFolder extends ToodleDoBase
 {
      
@@ -8,6 +19,10 @@ public class ToodleDoFolder extends ToodleDoBase
      int privateFolder;
      int archive;
      int ord;
+     
+     boolean nameDirty = false;
+     boolean privateFolderDirty = false;
+     boolean archiveDirty = false;
 
      public ToodleDoFolder()
      {
@@ -43,6 +58,7 @@ public class ToodleDoFolder extends ToodleDoBase
      public void setName(String name)
      {
           this.name = name;
+          setNameDirty(true);
      }
 
      public String getName()
@@ -53,6 +69,7 @@ public class ToodleDoFolder extends ToodleDoBase
      public void setArchive(int archive)
      {
           this.archive = archive;
+          setArchiveDirty(true);
      }
 
      public int getArchive()
@@ -73,10 +90,37 @@ public class ToodleDoFolder extends ToodleDoBase
      public void setPrivateFolder(int private_folder)
      {
           this.privateFolder = private_folder;
+          setPrivateFolderDirty(true);
      }
 
      public int getPrivateFolder()
      {
           return privateFolder;
      }
+
+	public boolean isNameDirty() {
+		return nameDirty;
+	}
+
+	public void setNameDirty(boolean nameDirty) {
+		this.nameDirty = nameDirty;
+	}
+
+	public boolean isPrivateFolderDirty() {
+		return privateFolderDirty;
+	}
+
+	public void setPrivateFolderDirty(boolean privateFolderDirty) {
+		this.privateFolderDirty = privateFolderDirty;
+	}
+
+	public boolean isArchiveDirty() {
+		return archiveDirty;
+	}
+
+	public void setArchiveDirty(boolean archiveDirty) {
+		this.archiveDirty = archiveDirty;
+	}
+
+
 }
